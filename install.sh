@@ -24,6 +24,11 @@ done
 chmod +x "$INSTALL_DIR/eval.sh" "$INSTALL_DIR/evaluate.sh" "$INSTALL_DIR/evaluate-ai.sh"
 
 # ── Symlink ─────────────────────────────────────────────────────────────
+# Ensure BIN_DIR exists (some systems lack /usr/local/bin by default)
+if [[ ! -d "$BIN_DIR" ]]; then
+  sudo mkdir -p "$BIN_DIR"
+fi
+
 if [[ -w "$BIN_DIR" ]]; then
   ln -sf "$INSTALL_DIR/eval.sh" "$BIN_DIR/assess"
 else
