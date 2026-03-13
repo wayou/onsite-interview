@@ -25,19 +25,19 @@ chmod +x "$INSTALL_DIR/eval.sh" "$INSTALL_DIR/evaluate.sh" "$INSTALL_DIR/evaluat
 
 # ── Symlink ─────────────────────────────────────────────────────────────
 if [[ -w "$BIN_DIR" ]]; then
-  ln -sf "$INSTALL_DIR/eval.sh" "$BIN_DIR/eval"
+  ln -sf "$INSTALL_DIR/eval.sh" "$BIN_DIR/assess"
 else
   echo "  Cannot write to $BIN_DIR — trying with sudo..."
-  sudo ln -sf "$INSTALL_DIR/eval.sh" "$BIN_DIR/eval"
+  sudo ln -sf "$INSTALL_DIR/eval.sh" "$BIN_DIR/assess"
 fi
 
 echo ""
-echo "Done! Installed: eval → $BIN_DIR/eval"
+echo "Done! Installed: assess → $BIN_DIR/assess"
 echo ""
 echo "Usage:"
-echo "  eval                    # run both evaluations"
-echo "  eval -f                 # functional only"
-echo "  eval -a -s file.jsonl   # AI collaboration only"
+echo "  assess                    # run both evaluations"
+echo "  assess -f                 # functional only"
+echo "  assess -a -s file.jsonl   # AI collaboration only"
 echo "  cat ~/.onsite-interview/problem.md  # view the problem"
 echo ""
-echo "To uninstall: rm -rf $INSTALL_DIR && rm -f $BIN_DIR/eval"
+echo "To uninstall: rm -rf $INSTALL_DIR && rm -f $BIN_DIR/assess"
