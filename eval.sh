@@ -10,7 +10,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.7.4"
+VERSION="0.7.5"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
@@ -79,6 +79,16 @@ case "${1:-}" in
     exit 0
     ;;
   cleanup)
+    # Kill any process listening on the default port (8787)
+    PORT=8787
+    PIDS=$(lsof -ti :"$PORT" 2>/dev/null || true)
+    if [[ -n "$PIDS" ]]; then
+      echo "$PIDS" | xargs kill 2>/dev/null || true
+      echo "Stopped server on port $PORT (PID: $(echo $PIDS | tr '\n' ' '))"
+    else
+      echo "No server found on port $PORT"
+    fi
+
     # Remove everything in CWD except problem.md
     shopt -s dotglob
     for item in *; do
