@@ -266,11 +266,7 @@ Evaluate the candidate across these 5 phases using the rubric below. For each cr
 PROMPT_EOF
 )
 
-PROMPT="${PROMPT}
-${CONDENSED}
-</session>
-
-Score each criterion and provide your evaluation."
+PROMPT="${PROMPT}"$'\n'"${CONDENSED}"$'\n'"</session>"$'\n\n'"Score each criterion and provide your evaluation."
 
 # ── Stage 3: JSON Schema ─────────────────────────────────────────────
 
@@ -360,7 +356,7 @@ MAX_ATTEMPTS=2
 while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
   ATTEMPT=$((ATTEMPT + 1))
 
-  LLM_OUTPUT=$(echo "$PROMPT" | claude --print --output-format json --json-schema "$SCHEMA" --model "$MODEL" 2>/dev/null) && break
+  LLM_OUTPUT=$(printf '%s' "$PROMPT" | claude --print --output-format json --json-schema "$SCHEMA" --model "$MODEL" 2>/dev/null) && break
 
   if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
     echo "LLM call failed (attempt $ATTEMPT/$MAX_ATTEMPTS), retrying..." >&2

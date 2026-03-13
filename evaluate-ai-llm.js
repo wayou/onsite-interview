@@ -8,10 +8,6 @@ const { execSync, execFileSync } = require('child_process');
 const readline = require('readline');
 
 // ── Colors ──────────────────────────────────────────────────────────
-const RED = '\x1b[0;31m';
-const GREEN = '\x1b[0;32m';
-const YELLOW = '\x1b[1;33m';
-const BLUE = '\x1b[0;34m';
 const BOLD = '\x1b[1m';
 const NC = '\x1b[0m';
 
@@ -261,93 +257,9 @@ Evaluate the candidate across these 5 phases using the rubric below. For each cr
 <session>
 `;
 
-function criterion(maxPts) {
-  return {
-    type: 'object',
-    required: ['score', 'reason'],
-    properties: {
-      score: { type: 'integer', minimum: 0, maximum: maxPts },
-      reason: { type: 'string' },
-    },
-    additionalProperties: false,
-  };
-}
-
-const SCHEMA = {
-  type: 'object',
-  required: ['phase1', 'phase2', 'phase3', 'phase4', 'phase5', 'total_score', 'summary', 'strengths', 'improvements'],
-  properties: {
-    phase1: {
-      type: 'object',
-      required: ['prompt_count', 'not_chatty', 'multi_turn', 'session_length', 'subtotal'],
-      properties: {
-        prompt_count: criterion(8),
-        not_chatty: criterion(4),
-        multi_turn: criterion(8),
-        session_length: criterion(5),
-        subtotal: { type: 'integer', minimum: 0, maximum: 25 },
-      },
-      additionalProperties: false,
-    },
-    phase2: {
-      type: 'object',
-      required: ['thoughtful_prompts', 'references_spec', 'problem_decomposition', 'not_spec_paste', 'subtotal'],
-      properties: {
-        thoughtful_prompts: criterion(6),
-        references_spec: criterion(5),
-        problem_decomposition: criterion(5),
-        not_spec_paste: criterion(4),
-        subtotal: { type: 'integer', minimum: 0, maximum: 20 },
-      },
-      additionalProperties: false,
-    },
-    phase3: {
-      type: 'object',
-      required: ['tested_service', 'multiple_verifications', 'reviewed_code', 'ran_tests', 'tested_edge_cases', 'subtotal'],
-      properties: {
-        tested_service: criterion(8),
-        multiple_verifications: criterion(5),
-        reviewed_code: criterion(5),
-        ran_tests: criterion(4),
-        tested_edge_cases: criterion(3),
-        subtotal: { type: 'integer', minimum: 0, maximum: 25 },
-      },
-      additionalProperties: false,
-    },
-    phase4: {
-      type: 'object',
-      required: ['tool_diversity', 'code_generation', 'token_efficiency', 'iterative_refinement', 'subtotal'],
-      properties: {
-        tool_diversity: criterion(6),
-        code_generation: criterion(5),
-        token_efficiency: criterion(5),
-        iterative_refinement: criterion(4),
-        subtotal: { type: 'integer', minimum: 0, maximum: 20 },
-      },
-      additionalProperties: false,
-    },
-    phase5: {
-      type: 'object',
-      required: ['security_awareness', 'error_handling', 'beyond_spec', 'subtotal'],
-      properties: {
-        security_awareness: criterion(4),
-        error_handling: criterion(3),
-        beyond_spec: criterion(3),
-        subtotal: { type: 'integer', minimum: 0, maximum: 10 },
-      },
-      additionalProperties: false,
-    },
-    total_score: { type: 'integer', minimum: 0, maximum: 100 },
-    summary: { type: 'string' },
-    strengths: { type: 'array', items: { type: 'string' } },
-    improvements: { type: 'array', items: { type: 'string' } },
-  },
-  additionalProperties: false,
-};
 
 // ── LLM Call ────────────────────────────────────────────────────────
-function callClaude(prompt, schema, model) {
-  const schemaJson = JSON.stringify(schema);
+function callClaude(prompt, model) {
   const maxAttempts = 2;
 
   // Unset CLAUDECODE env var to allow nested claude calls
@@ -358,8 +270,6 @@ function callClaude(prompt, schema, model) {
     try {
       const result = execFileSync('claude', [
         '--print',
-        '--output-format', 'json',
-        '--json-schema', schemaJson,
         '--model', model,
       ], {
         input: prompt,
@@ -377,125 +287,6 @@ function callClaude(prompt, schema, model) {
   return null;
 }
 
-// ── Rendering ───────────────────────────────────────────────────────
-const PHASES = [
-  {
-    key: 'phase1', title: 'Phase 1: Conversation Structure (25 pts)', maxTotal: 25,
-    criteria: [
-      { key: 'prompt_count', max: 8, desc: 'Reasonable prompt count' },
-      { key: 'not_chatty', max: 4, desc: 'Not excessively chatty' },
-      { key: 'multi_turn', max: 8, desc: 'Multi-turn iteration' },
-      { key: 'session_length', max: 5, desc: 'Session not trivially short' },
-    ],
-  },
-  {
-    key: 'phase2', title: 'Phase 2: Prompt Quality (20 pts)', maxTotal: 20,
-    criteria: [
-      { key: 'thoughtful_prompts', max: 6, desc: 'Thoughtful prompts' },
-      { key: 'references_spec', max: 5, desc: 'References spec/requirements' },
-      { key: 'problem_decomposition', max: 5, desc: 'Problem decomposition' },
-      { key: 'not_spec_paste', max: 4, desc: 'Not verbatim spec paste' },
-    ],
-  },
-  {
-    key: 'phase3', title: 'Phase 3: Verification & Review (25 pts)', maxTotal: 25,
-    criteria: [
-      { key: 'tested_service', max: 8, desc: 'Tested the service' },
-      { key: 'multiple_verifications', max: 5, desc: 'Multiple verification attempts' },
-      { key: 'reviewed_code', max: 5, desc: 'Reviewed generated code' },
-      { key: 'ran_tests', max: 4, desc: 'Ran automated tests' },
-      { key: 'tested_edge_cases', max: 3, desc: 'Tested edge cases' },
-    ],
-  },
-  {
-    key: 'phase4', title: 'Phase 4: Strategic AI Usage (20 pts)', maxTotal: 20,
-    criteria: [
-      { key: 'tool_diversity', max: 6, desc: 'Tool diversity' },
-      { key: 'code_generation', max: 5, desc: 'Code generation' },
-      { key: 'token_efficiency', max: 5, desc: 'Token efficiency' },
-      { key: 'iterative_refinement', max: 4, desc: 'Iterative refinement' },
-    ],
-  },
-  {
-    key: 'phase5', title: 'Phase 5: Engineering Depth (10 pts)', maxTotal: 10,
-    criteria: [
-      { key: 'security_awareness', max: 4, desc: 'Security/validation awareness' },
-      { key: 'error_handling', max: 3, desc: 'Error handling' },
-      { key: 'beyond_spec', max: 3, desc: 'Beyond-spec thinking' },
-    ],
-  },
-];
-
-function printCriterion(data, phaseKey, crit) {
-  const score = data[phaseKey][crit.key].score;
-  const reason = data[phaseKey][crit.key].reason;
-
-  if (score === crit.max) {
-    console.log(`  ${GREEN}\u2713${NC} [+${score}] ${crit.desc} \u2014 ${reason}`);
-  } else if (score > 0) {
-    console.log(`  ${YELLOW}\u25D0${NC} [+${score}/${crit.max}] ${crit.desc} \u2014 ${reason}`);
-  } else {
-    console.log(`  ${RED}\u2717${NC} [+0/${crit.max}] ${crit.desc} \u2014 ${reason}`);
-  }
-}
-
-function render(data) {
-  // Print each phase
-  const subtotals = [];
-  let totalScore = 0;
-  let passed = 0;
-  let failed = 0;
-
-  PHASES.forEach((phase, i) => {
-    if (i > 0) console.log('');
-    console.log(`${BOLD}${BLUE}${phase.title}${NC}`);
-
-    let sub = 0;
-    phase.criteria.forEach(c => {
-      printCriterion(data, phase.key, c);
-      const s = data[phase.key][c.key].score;
-      sub += s;
-      totalScore += s;
-      if (s > 0) passed++; else failed++;
-    });
-    subtotals.push(sub);
-  });
-
-  const total = passed + failed;
-
-  // Phase subtotals
-  console.log('');
-  console.log(`  Phase subtotals: ${subtotals[0]}/25  ${subtotals[1]}/20  ${subtotals[2]}/25  ${subtotals[3]}/20  ${subtotals[4]}/10`);
-
-  // Summary line
-  console.log(`\n${BOLD}\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550${NC}`);
-  console.log(`${BOLD}  Results: ${GREEN}${passed} passed${NC} / ${RED}${failed} failed${NC} (${total} criteria)`);
-  console.log(`${BOLD}  Score:   ${totalScore} / 100${NC}`);
-
-  let grade, color, interp;
-  if (totalScore >= 90) { grade = 'A'; color = GREEN; interp = 'Exceptional AI collaboration'; }
-  else if (totalScore >= 75) { grade = 'B'; color = GREEN; interp = 'Good \u2014 iterative and thoughtful'; }
-  else if (totalScore >= 60) { grade = 'C'; color = YELLOW; interp = 'Acceptable \u2014 some verification gaps'; }
-  else if (totalScore >= 40) { grade = 'D'; color = RED; interp = 'Weak \u2014 mostly one-shot'; }
-  else { grade = 'F'; color = RED; interp = 'No meaningful AI collaboration'; }
-
-  console.log(`${BOLD}  Grade:   ${color}${grade}${NC} \u2014 ${interp}`);
-  console.log(`${BOLD}\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550${NC}`);
-
-  // Qualitative feedback
-  console.log('');
-  console.log(`${BOLD}Summary:${NC} ${data.summary}`);
-
-  console.log('');
-  console.log(`${BOLD}${GREEN}Strengths:${NC}`);
-  data.strengths.forEach(s => console.log(`  ${GREEN}\u2022${NC} ${s}`));
-
-  console.log('');
-  console.log(`${BOLD}${YELLOW}Areas for improvement:${NC}`);
-  data.improvements.forEach(s => console.log(`  ${YELLOW}\u2022${NC} ${s}`));
-
-  console.log('');
-}
 
 // ── Main ────────────────────────────────────────────────────────────
 async function main() {
@@ -536,41 +327,20 @@ async function main() {
   console.log(`Condensed to ${condensed.length} chars`);
 
   // Stage 2: Build prompt
-  const prompt = RUBRIC_PROMPT + condensed + '\n</session>\n\nScore each criterion and provide your evaluation.';
+  const prompt = RUBRIC_PROMPT + condensed + '\n</session>\n\nScore each criterion and provide your evaluation. Format the output nicely with scores per criterion, phase subtotals, a final total score out of 100, a letter grade (A/B/C/D/F), a summary, strengths, and areas for improvement.';
 
-  // Stage 3: Call LLM
+  // Stage 3: Call LLM and display result directly
   console.log(`${BOLD}Calling Claude (${model}) for evaluation...${NC}`);
   console.log('');
 
-  const llmRaw = callClaude(prompt, SCHEMA, model);
-  if (!llmRaw) {
+  const result = callClaude(prompt, model);
+  if (!result) {
     console.error(`Error: LLM evaluation failed after 2 attempts.`);
     process.exit(1);
   }
 
-  let data;
-  try {
-    const parsed = JSON.parse(llmRaw);
-    // claude --output-format json wraps output in {"type":"result","result":"..."}
-    // The actual evaluation JSON is inside the .result field as a string
-    if (parsed.result && typeof parsed.result === 'string') {
-      data = JSON.parse(parsed.result);
-    } else if (parsed.phase1) {
-      // Direct JSON (no wrapper)
-      data = parsed;
-    } else {
-      throw new Error('Unexpected response structure');
-    }
-  } catch (err) {
-    console.error('Error: LLM returned invalid JSON.');
-    console.error(`Parse error: ${err.message}`);
-    console.error('Raw output (first 500 chars):');
-    console.error(llmRaw.slice(0, 500));
-    process.exit(1);
-  }
-
-  // Stage 4: Render
-  render(data);
+  // Just display Claude's evaluation directly
+  console.log(result);
 }
 
 main().catch(err => {
