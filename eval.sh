@@ -35,7 +35,7 @@ Options (for evaluation):
   -h, --help           Show this help
 
 Examples:
-  $0 setup alice                             # create ~/candidates/alice_20260313_1430/
+  $0 setup alice                             # create ~/candidates/alice_2026-03-13-14-30/
   $0 cleanup                                 # remove candidate dir and kill server
   $0 update                                  # update toolkit to latest version
   $0 update --force                          # force re-download all files
@@ -61,7 +61,7 @@ case "${1:-}" in
       echo "Error: problem.md not found in $SCRIPT_DIR" >&2
       exit 1
     fi
-    TIMESTAMP=$(date +%Y%m%d_%H%M)
+    TIMESTAMP=$(date +%Y-%m-%d-%H-%M)
     CANDIDATES_DIR="$HOME/candidates"
     SESSION_DIR="$CANDIDATES_DIR/${CANDIDATE_NAME}_${TIMESTAMP}"
     mkdir -p "$SESSION_DIR"
