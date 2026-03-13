@@ -40,19 +40,32 @@ Analyzes the candidate's Claude Code conversation session (JSONL) to score how e
 
 - `bash`, `curl`, `jq`
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wayou/onsite-interview/master/install.sh | bash
+```
+
+This installs the toolkit to `~/.onsite-interview/` and creates an `assess` command in `/usr/local/bin`.
+
 ## Usage
 
 ```bash
-# eval.sh — run both evaluations at once (install globally with ./install.sh)
-./eval.sh                                    # both evals, defaults
-./eval.sh -u http://localhost:3000           # custom URL
-./eval.sh -s /path/to/session.jsonl          # explicit session file
-./eval.sh -f                                 # functional only
-./eval.sh -a -s /path/to/session.jsonl       # AI only
+# Setup & lifecycle
+assess setup                                 # copy problem.md to current directory
+assess cleanup                               # remove everything except problem.md
+assess update                                # update toolkit to latest version
 
-# or run individually:
-./evaluate.sh                        # functional scoring (default localhost:8787)
-./evaluate.sh http://localhost:3000  # functional scoring (custom URL)
-./evaluate-ai.sh                     # AI collaboration scoring (interactive)
-./evaluate-ai.sh /path/to/session.jsonl  # AI collaboration scoring (direct)
+# Evaluation
+assess                                       # run both evaluations
+assess -u http://localhost:3000              # custom URL, both evals
+assess -s /path/to/session.jsonl             # explicit session file
+assess -f                                    # functional only
+assess -a -s /path/to/session.jsonl          # AI only
+
+# Or run scripts individually:
+./evaluate.sh                                # functional scoring (default localhost:8787)
+./evaluate.sh http://localhost:3000          # functional scoring (custom URL)
+./evaluate-ai.sh                             # AI collaboration scoring (interactive)
+./evaluate-ai.sh /path/to/session.jsonl      # AI collaboration scoring (direct)
 ```

@@ -10,16 +10,20 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.2.0"
+VERSION="0.3.0"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
-Usage: $0 [options]
+Usage: $0 <command> [options]
 
-Run both functional and AI collaboration evaluations in one go.
+Commands:
+  setup                Copy problem.md into the current directory to start an interview
+  cleanup              Remove all files in the current directory except problem.md
+  update               Re-run the installer to update all toolkit files
+  (default)            Run evaluations (functional and/or AI collaboration)
 
-Options:
+Options (for evaluation):
   -u, --url URL        Base URL for functional tests (default: http://localhost:8787)
   -s, --session FILE   Session JSONL file for AI evaluation
   -w, --workdir DIR    Working directory for session discovery (default: CWD)
@@ -29,6 +33,9 @@ Options:
   -h, --help           Show this help
 
 Examples:
+  $0 setup                                   # copy problem.md to CWD
+  $0 cleanup                                 # clean CWD, keep problem.md
+  $0 update                                  # update toolkit to latest version
   $0                                         # both evals, defaults
   $0 -u http://localhost:3000                # custom URL, both evals
   $0 -s /path/to/session.jsonl              # both evals, explicit session
@@ -37,6 +44,36 @@ Examples:
 EOF
   exit 0
 }
+
+# ── Subcommands ──────────────────────────────────────────────────────
+case "${1:-}" in
+  setup)
+    if [[ ! -f "$SCRIPT_DIR/problem.md" ]]; then
+      echo "Error: problem.md not found in $SCRIPT_DIR" >&2
+      exit 1
+    fi
+    cp "$SCRIPT_DIR/problem.md" ./problem.md
+    echo "Copied problem.md to $(pwd)/problem.md"
+    exit 0
+    ;;
+  update)
+    echo "Updating onsite-interview toolkit..."
+    curl -fsSL https://raw.githubusercontent.com/wayou/onsite-interview/master/install.sh | bash
+    echo "Update complete."
+    exit 0
+    ;;
+  cleanup)
+    # Remove everything in CWD except problem.md
+    shopt -s dotglob
+    for item in *; do
+      [[ "$item" == "problem.md" ]] && continue
+      rm -rf "$item"
+    done
+    shopt -u dotglob
+    echo "Cleaned up $(pwd) (kept problem.md)"
+    exit 0
+    ;;
+esac
 
 # ── Defaults ─────────────────────────────────────────────────────────
 BASE_URL="http://localhost:8787"
