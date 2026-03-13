@@ -10,7 +10,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.5.1"
+VERSION="0.6.0"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
@@ -30,8 +30,7 @@ Options (for evaluation):
   -w, --workdir DIR    Working directory for session discovery (default: CWD)
   -f, --functional     Run only functional evaluation
   -a, --ai-only        Run only AI collaboration evaluation
-  --llm                Use LLM-based AI evaluator (requires claude CLI)
-  --model MODEL        LLM model for --llm evaluation (default: sonnet)
+  --model MODEL        LLM model for AI evaluation (default: sonnet)
   -v, --version        Show version
   -h, --help           Show this help
 
@@ -45,8 +44,7 @@ Examples:
   $0 -s /path/to/session.jsonl              # both evals, explicit session
   $0 -f                                      # functional only
   $0 -a -s /path/to/session.jsonl           # AI only
-  $0 --llm -a -s /path/to/session.jsonl    # AI only, LLM evaluator
-  $0 --llm --model opus -s file.jsonl      # LLM eval with Opus
+  $0 --model opus -a -s file.jsonl         # AI eval with Opus model
 EOF
   exit 0
 }
@@ -98,7 +96,6 @@ BASE_URL="http://localhost:8787"
 SESSION_ARG=""
 RUN_FUNCTIONAL=true
 RUN_AI=true
-USE_LLM=false
 LLM_MODEL=""
 
 # ── Parse args ───────────────────────────────────────────────────────
@@ -109,7 +106,6 @@ while [[ $# -gt 0 ]]; do
     -w|--workdir)   SESSION_ARG="$2"; shift 2 ;;
     -f|--functional) RUN_FUNCTIONAL=true; RUN_AI=false; shift ;;
     -a|--ai-only)   RUN_AI=true; RUN_FUNCTIONAL=false; shift ;;
-    --llm)          USE_LLM=true; shift ;;
     --model)        LLM_MODEL="$2"; shift 2 ;;
     -v|--version)   echo "assess $VERSION"; exit 0 ;;
     -h|--help)      usage ;;
@@ -145,13 +141,8 @@ fi
 
 # ── Run AI collaboration evaluation ─────────────────────────────────
 if [[ "$RUN_AI" == "true" ]]; then
-  if [[ "$USE_LLM" == "true" ]]; then
-    AI_EVAL_SCRIPT="evaluate-ai-llm.sh"
-    AI_EVAL_LABEL="AI COLLABORATION (LLM)"
-  else
-    AI_EVAL_SCRIPT="evaluate-ai.sh"
-    AI_EVAL_LABEL="AI COLLABORATION (evaluate-ai.sh)"
-  fi
+  AI_EVAL_SCRIPT="evaluate-ai-llm.sh"
+  AI_EVAL_LABEL="AI COLLABORATION (LLM)"
 
   echo ""
   echo -e "${BOLD}${BLUE}╔══════════════════════════════════════════╗${NC}"
@@ -161,7 +152,7 @@ if [[ "$RUN_AI" == "true" ]]; then
 
   # Build evaluator args
   AI_EVAL_ARGS=()
-  if [[ "$USE_LLM" == "true" ]] && [[ -n "$LLM_MODEL" ]]; then
+  if [[ -n "$LLM_MODEL" ]]; then
     AI_EVAL_ARGS+=(--model "$LLM_MODEL")
   fi
 

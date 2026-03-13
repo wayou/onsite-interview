@@ -4,9 +4,8 @@ set -euo pipefail
 # ── Preflight ────────────────────────────────────────────────────────
 if ! command -v claude &>/dev/null; then
   echo "Error: 'claude' CLI not found. Install Claude Code first." >&2
-  echo "Falling back to heuristic evaluator..." >&2
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  exec "$SCRIPT_DIR/evaluate-ai.sh" "$@"
+  echo "  https://docs.anthropic.com/en/docs/claude-code" >&2
+  exit 1
 fi
 
 if ! command -v jq &>/dev/null; then
@@ -217,7 +216,6 @@ if [[ "$CONDENSED_LEN" -gt 150000 ]]; then
   CONDENSED_LEN=${#CONDENSED}
   if [[ "$CONDENSED_LEN" -gt 200000 ]]; then
     echo "Error: Session too large even after aggressive truncation ($CONDENSED_LEN chars)." >&2
-    echo "Use the heuristic evaluator instead: evaluate-ai.sh" >&2
     exit 1
   fi
 fi
@@ -370,7 +368,6 @@ done
 
 if [[ -z "$LLM_OUTPUT" ]]; then
   echo "Error: LLM evaluation failed after $MAX_ATTEMPTS attempts." >&2
-  echo "Suggestion: Run the heuristic evaluator instead: evaluate-ai.sh" >&2
   exit 1
 fi
 
