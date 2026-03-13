@@ -10,7 +10,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.7.5"
+VERSION="0.8.0"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
@@ -18,8 +18,8 @@ usage() {
 Usage: $0 <command> [options]
 
 Commands:
-  setup                Copy problem.md into the current directory to start an interview
-  cleanup              Remove all files in the current directory except problem.md
+  setup <name>         Create ~/candidates/<name>_<timestamp>/ and copy problem.md into it
+  cleanup              Remove the candidate directory and kill the server
   update               Re-run the installer to update all toolkit files
   update --force       Force re-download even if already on latest version
   (default)            Run evaluations (functional and/or AI collaboration)
@@ -35,8 +35,8 @@ Options (for evaluation):
   -h, --help           Show this help
 
 Examples:
-  $0 setup                                   # copy problem.md to CWD
-  $0 cleanup                                 # clean CWD, keep problem.md
+  $0 setup alice                             # create ~/candidates/alice_20260313_1430/
+  $0 cleanup                                 # remove candidate dir and kill server
   $0 update                                  # update toolkit to latest version
   $0 update --force                          # force re-download all files
   $0                                         # both evals, defaults
@@ -52,12 +52,24 @@ EOF
 # ── Subcommands ──────────────────────────────────────────────────────
 case "${1:-}" in
   setup)
+    CANDIDATE_NAME="${2:-}"
+    if [[ -z "$CANDIDATE_NAME" ]]; then
+      echo "Usage: $0 setup <candidate-name>" >&2
+      exit 1
+    fi
     if [[ ! -f "$SCRIPT_DIR/problem.md" ]]; then
       echo "Error: problem.md not found in $SCRIPT_DIR" >&2
       exit 1
     fi
-    cp "$SCRIPT_DIR/problem.md" ./problem.md
-    echo "Copied problem.md to $(pwd)/problem.md"
+    TIMESTAMP=$(date +%Y%m%d_%H%M)
+    CANDIDATES_DIR="$HOME/candidates"
+    SESSION_DIR="$CANDIDATES_DIR/${CANDIDATE_NAME}_${TIMESTAMP}"
+    mkdir -p "$SESSION_DIR"
+    cp "$SCRIPT_DIR/problem.md" "$SESSION_DIR/problem.md"
+    # Write a latest pointer for convenience
+    echo "$SESSION_DIR" > "$CANDIDATES_DIR/latest"
+    echo "Created session: $SESSION_DIR"
+    echo "Run:  cd $SESSION_DIR"
     exit 0
     ;;
   update)
@@ -89,14 +101,25 @@ case "${1:-}" in
       echo "No server found on port $PORT"
     fi
 
-    # Remove everything in CWD except problem.md
-    shopt -s dotglob
-    for item in *; do
-      [[ "$item" == "problem.md" ]] && continue
-      rm -rf "$item"
-    done
-    shopt -u dotglob
-    echo "Cleaned up $(pwd) (kept problem.md)"
+    # Determine candidate dir: explicit arg, or latest pointer, or CWD fallback
+    CANDIDATE_DIR="${2:-}"
+    CANDIDATES_DIR="$HOME/candidates"
+    if [[ -z "$CANDIDATE_DIR" ]] && [[ -f "$CANDIDATES_DIR/latest" ]]; then
+      CANDIDATE_DIR="$(cat "$CANDIDATES_DIR/latest")"
+    fi
+
+    if [[ -n "$CANDIDATE_DIR" ]] && [[ -d "$CANDIDATE_DIR" ]]; then
+      rm -rf "$CANDIDATE_DIR"
+      # Clear latest pointer if it pointed to the removed dir
+      if [[ -f "$CANDIDATES_DIR/latest" ]] && [[ "$(cat "$CANDIDATES_DIR/latest")" == "$CANDIDATE_DIR" ]]; then
+        rm -f "$CANDIDATES_DIR/latest"
+      fi
+      echo "Removed $CANDIDATE_DIR"
+    else
+      echo "No candidate directory to clean up" >&2
+      echo "Usage: $0 cleanup [/path/to/candidate/dir]" >&2
+      exit 1
+    fi
     exit 0
     ;;
 esac
