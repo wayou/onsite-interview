@@ -18,7 +18,7 @@ usage() {
 Usage: $0 <command> [options]
 
 Commands:
-  setup <name>         Create ~/candidates/<name>_<timestamp>/ and copy problem.md into it
+  setup                Create ~/candidates/<timestamp>/ and copy problem.md into it
   cleanup              Remove the candidate directory and kill the server
   update               Re-run the installer to update all toolkit files
   update --force       Force re-download even if already on latest version
@@ -35,7 +35,7 @@ Options (for evaluation):
   -h, --help           Show this help
 
 Examples:
-  $0 setup alice                             # create ~/candidates/alice_2026-03-13-14-30/
+  $0 setup                                   # create ~/candidates/2026-03-13-14-30/
   $0 cleanup                                 # remove candidate dir and kill server
   $0 update                                  # update toolkit to latest version
   $0 update --force                          # force re-download all files
@@ -52,18 +52,13 @@ EOF
 # ── Subcommands ──────────────────────────────────────────────────────
 case "${1:-}" in
   setup)
-    CANDIDATE_NAME="${2:-}"
-    if [[ -z "$CANDIDATE_NAME" ]]; then
-      echo "Usage: $0 setup <candidate-name>" >&2
-      exit 1
-    fi
     if [[ ! -f "$SCRIPT_DIR/problem.md" ]]; then
       echo "Error: problem.md not found in $SCRIPT_DIR" >&2
       exit 1
     fi
     TIMESTAMP=$(date +%Y-%m-%d-%H-%M)
     CANDIDATES_DIR="$HOME/candidates"
-    SESSION_DIR="$CANDIDATES_DIR/${CANDIDATE_NAME}_${TIMESTAMP}"
+    SESSION_DIR="$CANDIDATES_DIR/${TIMESTAMP}"
     mkdir -p "$SESSION_DIR"
     cp "$SCRIPT_DIR/problem.md" "$SESSION_DIR/problem.md"
     # Write a latest pointer for convenience
