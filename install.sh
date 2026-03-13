@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Onsite Interview Toolkit — remote installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/wayou/onsite-interview/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/wayou/onsite-interview/master/install.sh | bash
 
-REPO="https://raw.githubusercontent.com/wayou/onsite-interview/main"
+REPO="https://raw.githubusercontent.com/wayou/onsite-interview/master"
 INSTALL_DIR="${ONSITE_INTERVIEW_HOME:-$HOME/.onsite-interview}"
 BIN_DIR="${ONSITE_INTERVIEW_BIN:-/usr/local/bin}"
 
