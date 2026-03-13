@@ -10,7 +10,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.8.1"
+VERSION="0.8.2"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
@@ -19,7 +19,7 @@ Usage: $0 <command> [options]
 
 Commands:
   setup                Create ~/candidates/<timestamp>/ and copy problem.md into it
-  cleanup              Remove the candidate directory and kill the server
+  cleanup              Remove all ~/candidates/ subdirs (with confirmation) and kill the server
   update               Re-run the installer to update all toolkit files
   update --force       Force re-download even if already on latest version
   (default)            Run evaluations (functional and/or AI collaboration)
@@ -36,7 +36,7 @@ Options (for evaluation):
 
 Examples:
   $0 setup                                   # create ~/candidates/2026-03-13-14-30/
-  $0 cleanup                                 # remove candidate dir and kill server
+  $0 cleanup                                 # remove all candidate dirs and kill server
   $0 update                                  # update toolkit to latest version
   $0 update --force                          # force re-download all files
   $0                                         # both evals, defaults
@@ -96,24 +96,40 @@ case "${1:-}" in
       echo "No server found on port $PORT"
     fi
 
-    # Determine candidate dir: explicit arg, or latest pointer, or CWD fallback
-    CANDIDATE_DIR="${2:-}"
+    # Remove all subdirectories under ~/candidates/ with user confirmation
     CANDIDATES_DIR="$HOME/candidates"
-    if [[ -z "$CANDIDATE_DIR" ]] && [[ -f "$CANDIDATES_DIR/latest" ]]; then
-      CANDIDATE_DIR="$(cat "$CANDIDATES_DIR/latest")"
+    if [[ ! -d "$CANDIDATES_DIR" ]]; then
+      echo "No ~/candidates/ directory found"
+      exit 0
     fi
 
-    if [[ -n "$CANDIDATE_DIR" ]] && [[ -d "$CANDIDATE_DIR" ]]; then
-      rm -rf "$CANDIDATE_DIR"
-      # Clear latest pointer if it pointed to the removed dir
-      if [[ -f "$CANDIDATES_DIR/latest" ]] && [[ "$(cat "$CANDIDATES_DIR/latest")" == "$CANDIDATE_DIR" ]]; then
-        rm -f "$CANDIDATES_DIR/latest"
-      fi
-      echo "Removed $CANDIDATE_DIR"
+    # Collect subdirectories (exclude the 'latest' pointer file)
+    DIRS=()
+    for d in "$CANDIDATES_DIR"/*/; do
+      [[ -d "$d" ]] && DIRS+=("$d")
+    done
+
+    if [[ ${#DIRS[@]} -eq 0 ]]; then
+      echo "No candidate directories to clean up"
+      # Still clean up latest pointer if it exists
+      rm -f "$CANDIDATES_DIR/latest" 2>/dev/null
+      exit 0
+    fi
+
+    echo "The following directories will be removed:"
+    for d in "${DIRS[@]}"; do
+      echo "  $d"
+    done
+    printf "\nProceed? [y/N] "
+    read -r CONFIRM
+    if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+      for d in "${DIRS[@]}"; do
+        rm -rf "$d"
+        echo "Removed $d"
+      done
+      rm -f "$CANDIDATES_DIR/latest" 2>/dev/null
     else
-      echo "No candidate directory to clean up" >&2
-      echo "Usage: $0 cleanup [/path/to/candidate/dir]" >&2
-      exit 1
+      echo "Cancelled"
     fi
     exit 0
     ;;
