@@ -550,10 +550,21 @@ async function main() {
 
   let data;
   try {
-    data = JSON.parse(llmRaw);
-  } catch {
+    const parsed = JSON.parse(llmRaw);
+    // claude --output-format json wraps output in {"type":"result","result":"..."}
+    // The actual evaluation JSON is inside the .result field as a string
+    if (parsed.result && typeof parsed.result === 'string') {
+      data = JSON.parse(parsed.result);
+    } else if (parsed.phase1) {
+      // Direct JSON (no wrapper)
+      data = parsed;
+    } else {
+      throw new Error('Unexpected response structure');
+    }
+  } catch (err) {
     console.error('Error: LLM returned invalid JSON.');
-    console.error('Raw output:');
+    console.error(`Parse error: ${err.message}`);
+    console.error('Raw output (first 500 chars):');
     console.error(llmRaw.slice(0, 500));
     process.exit(1);
   }
