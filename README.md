@@ -25,16 +25,8 @@ The evaluation secretly tests dimensions **not mentioned** in the problem (valid
 ### `evaluate.sh` — Functional (100 pts)
 Black-box tests against the running service: correctness, validation, security, HTTP semantics.
 
-### `evaluate-ai.sh` — AI Collaboration (100 pts)
-Analyzes the candidate's Claude Code conversation session (JSONL) to score how effectively they used AI:
-
-| Phase | Pts | What it measures |
-|-------|-----|------------------|
-| Conversation Structure | 25 | Problem decomposition into focused interactions |
-| Prompt Quality | 20 | Clear, specific instructions with spec references |
-| Verification & Review | 25 | Testing AI output (curl, read, edge cases) |
-| Strategic AI Usage | 20 | Tool diversity, code gen, token efficiency |
-| Engineering Depth | 10 | Security, error handling, beyond-spec thinking |
+### AI Collaboration (100 pts)
+Analyzes the candidate's Claude Code conversation session (JSONL) via LLM to score how effectively they used AI.
 
 ## Requirements
 
@@ -66,6 +58,4 @@ assess -a -s /path/to/session.jsonl          # AI only
 # Or run scripts individually:
 ./evaluate.sh                                # functional scoring (default localhost:8787)
 ./evaluate.sh http://localhost:3000          # functional scoring (custom URL)
-./evaluate-ai.sh                             # AI collaboration scoring (interactive)
-./evaluate-ai.sh /path/to/session.jsonl      # AI collaboration scoring (direct)
 ```
