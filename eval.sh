@@ -29,6 +29,8 @@ Options (for evaluation):
   -w, --workdir DIR    Working directory for session discovery (default: CWD)
   -f, --functional     Run only functional evaluation
   -a, --ai-only        Run only AI collaboration evaluation
+  --llm                Use LLM-based AI evaluator (requires claude CLI)
+  --model MODEL        LLM model for --llm evaluation (default: sonnet)
   -v, --version        Show version
   -h, --help           Show this help
 
@@ -41,6 +43,8 @@ Examples:
   $0 -s /path/to/session.jsonl              # both evals, explicit session
   $0 -f                                      # functional only
   $0 -a -s /path/to/session.jsonl           # AI only
+  $0 --llm -a -s /path/to/session.jsonl    # AI only, LLM evaluator
+  $0 --llm --model opus -s file.jsonl      # LLM eval with Opus
 EOF
   exit 0
 }
@@ -88,6 +92,8 @@ BASE_URL="http://localhost:8787"
 SESSION_ARG=""
 RUN_FUNCTIONAL=true
 RUN_AI=true
+USE_LLM=false
+LLM_MODEL=""
 
 # ── Parse args ───────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -97,6 +103,8 @@ while [[ $# -gt 0 ]]; do
     -w|--workdir)   SESSION_ARG="$2"; shift 2 ;;
     -f|--functional) RUN_FUNCTIONAL=true; RUN_AI=false; shift ;;
     -a|--ai-only)   RUN_AI=true; RUN_FUNCTIONAL=false; shift ;;
+    --llm)          USE_LLM=true; shift ;;
+    --model)        LLM_MODEL="$2"; shift 2 ;;
     -v|--version)   echo "assess $VERSION"; exit 0 ;;
     -h|--help)      usage ;;
     *)              echo "Unknown option: $1" >&2; usage ;;
@@ -131,17 +139,31 @@ fi
 
 # ── Run AI collaboration evaluation ─────────────────────────────────
 if [[ "$RUN_AI" == "true" ]]; then
+  if [[ "$USE_LLM" == "true" ]]; then
+    AI_EVAL_SCRIPT="evaluate-ai-llm.sh"
+    AI_EVAL_LABEL="AI COLLABORATION (LLM)"
+  else
+    AI_EVAL_SCRIPT="evaluate-ai.sh"
+    AI_EVAL_LABEL="AI COLLABORATION (evaluate-ai.sh)"
+  fi
+
   echo ""
   echo -e "${BOLD}${BLUE}╔══════════════════════════════════════════╗${NC}"
-  echo -e "${BOLD}${BLUE}║   AI COLLABORATION (evaluate-ai.sh)      ║${NC}"
+  printf "${BOLD}${BLUE}║   %-39s║${NC}\n" "$AI_EVAL_LABEL"
   echo -e "${BOLD}${BLUE}╚══════════════════════════════════════════╝${NC}"
   echo ""
 
+  # Build evaluator args
+  AI_EVAL_ARGS=()
+  if [[ "$USE_LLM" == "true" ]] && [[ -n "$LLM_MODEL" ]]; then
+    AI_EVAL_ARGS+=(--model "$LLM_MODEL")
+  fi
+
   if [[ -n "$SESSION_ARG" ]]; then
-    AI_OUTPUT=$("$SCRIPT_DIR/evaluate-ai.sh" "$SESSION_ARG" 2>&1) || true
+    AI_OUTPUT=$("$SCRIPT_DIR/$AI_EVAL_SCRIPT" ${AI_EVAL_ARGS[@]+"${AI_EVAL_ARGS[@]}"} "$SESSION_ARG" 2>&1) || true
   else
     # Interactive mode — pass through stdin
-    "$SCRIPT_DIR/evaluate-ai.sh"
+    "$SCRIPT_DIR/$AI_EVAL_SCRIPT" ${AI_EVAL_ARGS[@]+"${AI_EVAL_ARGS[@]}"}
     # Can't capture score in interactive mode, skip combined summary
     AI_SCORE=""
     RUN_AI="interactive"

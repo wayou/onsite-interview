@@ -39,12 +39,13 @@ emit_file() {
   echo "$HEADER"
   emit_file "problem.md"     "$SCRIPT_DIR/problem.md"     "PROBLEM_HEREDOC_EOF"
   emit_file "evaluate.sh"    "$SCRIPT_DIR/evaluate.sh"    "EVALUATE_HEREDOC_EOF"
-  emit_file "evaluate-ai.sh" "$SCRIPT_DIR/evaluate-ai.sh" "EVALUATE_AI_HEREDOC_EOF"
-  emit_file "eval.sh"        "$SCRIPT_DIR/eval.sh"        "EVAL_HEREDOC_EOF"
+  emit_file "evaluate-ai.sh"     "$SCRIPT_DIR/evaluate-ai.sh"     "EVALUATE_AI_HEREDOC_EOF"
+  emit_file "evaluate-ai-llm.sh" "$SCRIPT_DIR/evaluate-ai-llm.sh" "EVALUATE_AI_LLM_HEREDOC_EOF"
+  emit_file "eval.sh"            "$SCRIPT_DIR/eval.sh"            "EVAL_HEREDOC_EOF"
 
   cat << 'FOOTER'
 
-chmod +x "$INSTALL_DIR/evaluate.sh" "$INSTALL_DIR/evaluate-ai.sh" "$INSTALL_DIR/eval.sh"
+chmod +x "$INSTALL_DIR/evaluate.sh" "$INSTALL_DIR/evaluate-ai.sh" "$INSTALL_DIR/evaluate-ai-llm.sh" "$INSTALL_DIR/eval.sh"
 
 # ── Symlink ─────────────────────────────────────────────────────────────
 # Ensure BIN_DIR exists (some systems lack /usr/local/bin by default)

@@ -8,7 +8,7 @@ REPO="https://raw.githubusercontent.com/wayou/onsite-interview/master"
 INSTALL_DIR="${ONSITE_INTERVIEW_HOME:-$HOME/.onsite-interview}"
 BIN_DIR="${ONSITE_INTERVIEW_BIN:-/usr/local/bin}"
 
-FILES="eval.sh evaluate.sh evaluate-ai.sh problem.md README.md"
+FILES="eval.sh evaluate.sh evaluate-ai.sh evaluate-ai-llm.sh problem.md README.md"
 
 echo "Installing onsite-interview toolkit..."
 echo "  Target: $INSTALL_DIR"
@@ -21,7 +21,7 @@ for f in $FILES; do
   curl -fsSL "$REPO/$f" -o "$INSTALL_DIR/$f"
 done
 
-chmod +x "$INSTALL_DIR/eval.sh" "$INSTALL_DIR/evaluate.sh" "$INSTALL_DIR/evaluate-ai.sh"
+chmod +x "$INSTALL_DIR/eval.sh" "$INSTALL_DIR/evaluate.sh" "$INSTALL_DIR/evaluate-ai.sh" "$INSTALL_DIR/evaluate-ai-llm.sh"
 
 # ── Symlink ─────────────────────────────────────────────────────────────
 # Ensure BIN_DIR exists (some systems lack /usr/local/bin by default)
