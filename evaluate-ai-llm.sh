@@ -117,6 +117,9 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── Stage 1: Condensation ────────────────────────────────────────────
+# Strategy: user prompts are the primary signal for evaluating AI
+# collaboration skills. Assistant messages are condensed to just tool
+# names and brief context.
 echo -e "${BOLD}Condensing session transcript...${NC}"
 
 CONDENSED=$(cat "$SESSION_FILE" | jq -s '
@@ -145,38 +148,55 @@ CONDENSED=$(cat "$SESSION_FILE" | jq -s '
   # Helper: truncate string
   def trunc(n): if length > n then .[:n] + " [truncated]" else . end;
 
-  # Helper: summarize tool detail
-  def tool_detail:
-    if .name == "Bash" then (.input.command // "" | trunc(200))
-    elif .name == "Write" then ("file: " + (.input.file_path // "unknown") + " [" + ((.input.content // "") | length | tostring) + " chars]")
-    elif .name == "Edit" then ("file: " + (.input.file_path // "unknown") + " old: " + ((.input.old_string // "") | trunc(80)) + " → new: " + ((.input.new_string // "") | trunc(80)))
-    elif .name == "Read" then ("file: " + (.input.file_path // "unknown"))
-    elif .name == "Grep" then ("pattern: " + (.input.pattern // "unknown"))
-    elif .name == "Glob" then ("pattern: " + (.input.pattern // "unknown"))
-    else (.input | tostring | trunc(150))
+  # Brief tool summary — just tool name + target, not full content
+  def tool_brief:
+    if .name == "Bash" then (.name + "(" + ((.input.command // "") | trunc(120)) + ")")
+    elif .name == "Write" then (.name + "(" + (.input.file_path // "unknown") + ")")
+    elif .name == "Edit" then (.name + "(" + (.input.file_path // "unknown") + ")")
+    elif .name == "Read" then (.name + "(" + (.input.file_path // "unknown") + ")")
+    elif .name == "Grep" then (.name + "(" + (.input.pattern // "") + ")")
+    elif .name == "Glob" then (.name + "(" + (.input.pattern // "") + ")")
+    else .name
     end;
 
   # Helper: summarize tool result content
   def result_summary:
-    if .content | type == "string" then .content | trunc(150)
+    if .content | type == "string" then .content | trunc(100)
     elif .content | type == "array" then
-      [.content[] | select(.type == "text") | .text] | join(" ") | trunc(150)
+      [.content[] | select(.type == "text") | .text] | join(" ") | trunc(100)
     else ""
     end;
 
-  [.[] | select(.type == "user" or .type == "assistant") | select(.isMeta | not) |
-  . as $msg |
+  # Collect all records
+  [.[] | select(.type == "user" or .type == "assistant") | select(.isMeta | not)] as $records |
+
+  # Compute metadata
   {
-    role: .type,
-    ts: .timestamp,
-    texts: [extract_texts[] | if $msg.type == "user" then . else trunc(300) end],
-    tools: [extract_tool_uses[] | {name: .name, detail: tool_detail}],
-    results: [extract_tool_results[] | {summary: result_summary}],
-    usage: .message.usage
+    meta: {
+      total_tokens: {
+        input: ([$records[] | .message.usage // {} | ((.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0))] | add // 0),
+        output: ([$records[] | .message.usage // {} | (.output_tokens // 0)] | add // 0)
+      },
+      tools_used: ([$records[] | extract_tool_uses[] | .name] | unique),
+      user_prompt_count: ([$records[] | select(.type == "user") | select((extract_texts | length) > 0)] | length),
+      total_turns: ($records | length)
+    },
+    turns: [
+      $records[] |
+      if .type == "user" then
+        # User messages: keep full text (primary evaluation signal)
+        { role: "user", ts: .timestamp, texts: extract_texts }
+        + (if (extract_tool_results | length) > 0 then { results: [extract_tool_results[] | { summary: result_summary }] } else {} end)
+        | select((.texts | length > 0) or (.results | length > 0))
+      else
+        # Assistant messages: brief summary only
+        { role: "assistant", ts: .timestamp }
+        + (if (extract_texts | length) > 0 then { texts: [extract_texts[] | trunc(150)] } else {} end)
+        + (if (extract_tool_uses | length) > 0 then { tools: [extract_tool_uses[] | tool_brief] } else {} end)
+        | select((.texts // [] | length > 0) or (.tools // [] | length > 0))
+      end
+    ]
   }
-  # Drop entries with no useful content
-  | select((.texts | length > 0) or (.tools | length > 0) or (.results | length > 0))
-  ]
 ') || {
   echo "Error: Failed to condense session file (invalid JSON?)" >&2
   exit 1
@@ -186,37 +206,16 @@ CONDENSED=$(cat "$SESSION_FILE" | jq -s '
 CONDENSED_LEN=${#CONDENSED}
 echo "Condensed to $CONDENSED_LEN chars"
 
-if [[ "$CONDENSED_LEN" -gt 150000 ]]; then
-  echo "Condensed output too large ($CONDENSED_LEN chars), applying aggressive truncation..."
-  CONDENSED=$(cat "$SESSION_FILE" | jq -s '
-    def extract_texts:
-      if .message.content | type == "string" then [.message.content]
-      elif .message.content | type == "array" then
-        [.message.content[] | select(.type == "text") | .text]
-      else []
-      end;
-
-    def extract_tool_uses:
-      if .message.content | type == "array" then
-        [.message.content[] | select(.type == "tool_use")]
-      else []
-      end;
-
-    def trunc(n): if length > n then .[:n] + "..." else . end;
-
-    [.[] | select(.type == "user" or .type == "assistant") | select(.isMeta | not) |
-    {
-      role: .type,
-      texts: [extract_texts[] | trunc(100)],
-      tools: [extract_tool_uses[] | .name]
-    }
-    | select((.texts | length > 0) or (.tools | length > 0))
-    ]
-  ' 2>/dev/null)
+if [[ "$CONDENSED_LEN" -gt 100000 ]]; then
+  echo "Condensed output large ($CONDENSED_LEN chars), truncating user texts..."
+  CONDENSED=$(echo "$CONDENSED" | jq '
+    def trunc(n): if (. | type) == "string" and length > n then .[:n] + " [truncated]" else . end;
+    .turns |= [.[] | if .role == "user" and .texts then .texts |= [.[] | trunc(500)] else . end]
+  ')
 
   CONDENSED_LEN=${#CONDENSED}
-  if [[ "$CONDENSED_LEN" -gt 200000 ]]; then
-    echo "Error: Session too large even after aggressive truncation ($CONDENSED_LEN chars)." >&2
+  if [[ "$CONDENSED_LEN" -gt 150000 ]]; then
+    echo "Error: Session too large even after truncation ($CONDENSED_LEN chars)." >&2
     exit 1
   fi
 fi

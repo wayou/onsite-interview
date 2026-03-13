@@ -117,6 +117,11 @@ async function resolveSessionFile(workdir) {
 }
 
 // ── Condensation ────────────────────────────────────────────────────
+// Strategy: user prompts are the primary signal for evaluating AI
+// collaboration skills. Assistant messages are condensed to just tool
+// names and brief context — the evaluator needs to see WHAT the user
+// asked and HOW they interacted, not the full code the AI generated.
+
 function trunc(str, n) {
   if (typeof str !== 'string') return '';
   return str.length > n ? str.slice(0, n) + ' [truncated]' : str;
@@ -143,25 +148,26 @@ function extractToolResults(msg) {
   return content.filter(b => b.type === 'tool_result');
 }
 
-function toolDetail(tool) {
+// Brief tool summary — just enough to understand what happened, not full content
+function toolBrief(tool) {
   const input = tool.input || {};
   switch (tool.name) {
-    case 'Bash': return trunc(input.command || '', 200);
-    case 'Write': return `file: ${input.file_path || 'unknown'} [${(input.content || '').length} chars]`;
-    case 'Edit': return `file: ${input.file_path || 'unknown'} old: ${trunc(input.old_string || '', 80)} -> new: ${trunc(input.new_string || '', 80)}`;
-    case 'Read': return `file: ${input.file_path || 'unknown'}`;
-    case 'Grep': return `pattern: ${input.pattern || 'unknown'}`;
-    case 'Glob': return `pattern: ${input.pattern || 'unknown'}`;
-    default: return trunc(JSON.stringify(input), 150);
+    case 'Bash': return trunc(input.command || '', 120);
+    case 'Write': return input.file_path || 'unknown';
+    case 'Edit': return input.file_path || 'unknown';
+    case 'Read': return input.file_path || 'unknown';
+    case 'Grep': return input.pattern || '';
+    case 'Glob': return input.pattern || '';
+    default: return '';
   }
 }
 
 function resultSummary(result) {
-  if (typeof result.content === 'string') return trunc(result.content, 150);
+  if (typeof result.content === 'string') return trunc(result.content, 100);
   if (Array.isArray(result.content)) {
     return trunc(
       result.content.filter(b => b.type === 'text').map(b => b.text).join(' '),
-      150
+      100
     );
   }
   return '';
@@ -173,41 +179,68 @@ function condenseSession(sessionFile) {
     try { return JSON.parse(line); } catch { return null; }
   }).filter(Boolean);
 
+  // Collect total token usage across all assistant messages
+  let totalTokens = { input: 0, output: 0 };
+  const toolsUsed = new Set();
+
   const condensed = records
     .filter(r => (r.type === 'user' || r.type === 'assistant') && !r.isMeta)
     .map(r => {
       const isUser = r.type === 'user';
-      const texts = extractTexts(r).map(t => isUser ? t : trunc(t, 300));
-      const tools = extractToolUses(r).map(t => ({ name: t.name, detail: toolDetail(t) }));
-      const results = extractToolResults(r).map(t => ({ summary: resultSummary(t) }));
-      return {
-        role: r.type,
-        ts: r.timestamp,
-        texts,
-        tools,
-        results,
-        usage: r.message?.usage,
-      };
+
+      // Track token usage
+      const usage = r.message?.usage;
+      if (usage) {
+        totalTokens.input += (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
+        totalTokens.output += usage.output_tokens || 0;
+      }
+
+      if (isUser) {
+        // User messages: keep full text (the primary evaluation signal)
+        const texts = extractTexts(r);
+        const results = extractToolResults(r).map(t => ({ summary: resultSummary(t) }));
+        if (texts.length === 0 && results.length === 0) return null;
+        return { role: 'user', ts: r.timestamp, texts, ...(results.length > 0 && { results }) };
+      } else {
+        // Assistant messages: brief summary only
+        const texts = extractTexts(r).map(t => trunc(t, 150));
+        const tools = extractToolUses(r).map(t => {
+          toolsUsed.add(t.name);
+          const brief = toolBrief(t);
+          return brief ? `${t.name}(${brief})` : t.name;
+        });
+        if (texts.length === 0 && tools.length === 0) return null;
+        return { role: 'assistant', ts: r.timestamp, ...(texts.length > 0 && { texts }), ...(tools.length > 0 && { tools }) };
+      }
     })
-    .filter(r => r.texts.length > 0 || r.tools.length > 0 || r.results.length > 0);
+    .filter(Boolean);
 
-  let json = JSON.stringify(condensed);
+  // Build output with metadata summary at the top
+  const output = {
+    meta: {
+      total_tokens: totalTokens,
+      tools_used: [...toolsUsed],
+      user_prompt_count: condensed.filter(r => r.role === 'user' && r.texts?.length > 0).length,
+      total_turns: condensed.length,
+    },
+    turns: condensed,
+  };
 
-  // Safety valve: aggressive truncation if too large
-  if (json.length > 150000) {
-    console.log(`Condensed output too large (${json.length} chars), applying aggressive truncation...`);
-    const aggressive = records
-      .filter(r => (r.type === 'user' || r.type === 'assistant') && !r.isMeta)
-      .map(r => ({
-        role: r.type,
-        texts: extractTexts(r).map(t => trunc(t, 100)),
-        tools: extractToolUses(r).map(t => t.name),
-      }))
-      .filter(r => r.texts.length > 0 || r.tools.length > 0);
-    json = JSON.stringify(aggressive);
+  let json = JSON.stringify(output);
 
-    if (json.length > 200000) {
-      console.error(`Error: Session too large even after aggressive truncation (${json.length} chars).`);
+  // Safety valve: if still too large, truncate user texts too
+  if (json.length > 100000) {
+    console.log(`Condensed output large (${json.length} chars), truncating user texts...`);
+    output.turns = output.turns.map(t => {
+      if (t.role === 'user' && t.texts) {
+        return { ...t, texts: t.texts.map(text => trunc(text, 500)) };
+      }
+      return t;
+    });
+    json = JSON.stringify(output);
+
+    if (json.length > 150000) {
+      console.error(`Error: Session too large even after truncation (${json.length} chars).`);
       process.exit(1);
     }
   }
