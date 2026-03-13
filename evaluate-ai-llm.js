@@ -327,7 +327,7 @@ async function main() {
   console.log(`Condensed to ${condensed.length} chars`);
 
   // Stage 2: Build prompt
-  const prompt = RUBRIC_PROMPT + condensed + '\n</session>\n\nScore each criterion and provide your evaluation. Format the output nicely with scores per criterion, phase subtotals, a final total score out of 100, a letter grade (A/B/C/D/F), a summary, strengths, and areas for improvement.';
+  const prompt = RUBRIC_PROMPT + condensed + '\n</session>\n\nScore each criterion and provide your evaluation. Format the output nicely with scores per criterion, phase subtotals, a final total score out of 100, a letter grade (A/B/C/D/F), a summary, strengths, and areas for improvement.\n\nIMPORTANT: Write your entire evaluation report in Simplified Chinese (zh-CN).';
 
   // Log the full prompt to file for debugging
   const logFile = sessionFile.replace(/\.jsonl$/, '-llm-prompt.log');
