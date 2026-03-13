@@ -591,11 +591,12 @@ CONDENSED=$(cat "$SESSION_FILE" | jq -s '
     else ""
     end;
 
-  [.[] | select(.type == "user" or .type == "assistant") | select(.isMeta != true) |
+  [.[] | select(.type == "user" or .type == "assistant") | select(.isMeta | not) |
+  . as $msg |
   {
     role: .type,
     ts: .timestamp,
-    texts: [extract_texts[] | if .role == "user" then . else trunc(300) end],
+    texts: [extract_texts[] | if $msg.type == "user" then . else trunc(300) end],
     tools: [extract_tool_uses[] | {name: .name, detail: tool_detail}],
     results: [extract_tool_results[] | {summary: result_summary}],
     usage: .message.usage
@@ -603,7 +604,7 @@ CONDENSED=$(cat "$SESSION_FILE" | jq -s '
   # Drop entries with no useful content
   | select((.texts | length > 0) or (.tools | length > 0) or (.results | length > 0))
   ]
-' 2>/dev/null) || {
+') || {
   echo "Error: Failed to condense session file (invalid JSON?)" >&2
   exit 1
 }
@@ -630,7 +631,7 @@ if [[ "$CONDENSED_LEN" -gt 150000 ]]; then
 
     def trunc(n): if length > n then .[:n] + "..." else . end;
 
-    [.[] | select(.type == "user" or .type == "assistant") | select(.isMeta != true) |
+    [.[] | select(.type == "user" or .type == "assistant") | select(.isMeta | not) |
     {
       role: .type,
       texts: [extract_texts[] | trunc(100)],
@@ -952,7 +953,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.6.1"
+VERSION="0.6.2"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
