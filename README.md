@@ -43,12 +43,16 @@ Analyzes the candidate's Claude Code conversation session (JSONL) to score how e
 ## Usage
 
 ```bash
-# evaluate.sh — functional scoring
-./evaluate.sh                        # default localhost:8787
-./evaluate.sh http://localhost:3000  # custom base URL
+# eval.sh — run both evaluations at once (install globally with ./install.sh)
+./eval.sh                                    # both evals, defaults
+./eval.sh -u http://localhost:3000           # custom URL
+./eval.sh -s /path/to/session.jsonl          # explicit session file
+./eval.sh -f                                 # functional only
+./eval.sh -a -s /path/to/session.jsonl       # AI only
 
-# evaluate-ai.sh — AI collaboration scoring
-./evaluate-ai.sh                              # interactive picker (CWD)
-./evaluate-ai.sh /path/to/candidate/workdir   # interactive picker (workdir)
-./evaluate-ai.sh /path/to/session.jsonl       # direct session file
+# or run individually:
+./evaluate.sh                        # functional scoring (default localhost:8787)
+./evaluate.sh http://localhost:3000  # functional scoring (custom URL)
+./evaluate-ai.sh                     # AI collaboration scoring (interactive)
+./evaluate-ai.sh /path/to/session.jsonl  # AI collaboration scoring (direct)
 ```
