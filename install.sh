@@ -36,13 +36,18 @@ else
   sudo ln -sf "$INSTALL_DIR/eval.sh" "$BIN_DIR/assess"
 fi
 
+# ── Print version ────────────────────────────────────────────────────────
+INSTALLED_VERSION=$(grep -m1 '^VERSION=' "$INSTALL_DIR/eval.sh" | cut -d'"' -f2)
+
 echo ""
-echo "Done! Installed: assess → $BIN_DIR/assess"
+echo "Done! Installed: assess v${INSTALLED_VERSION} → $BIN_DIR/assess"
 echo ""
 echo "Usage:"
 echo "  assess                    # run both evaluations"
+echo "  assess setup              # copy problem.md to start an interview"
+echo "  assess cleanup            # clean up after interview"
+echo "  assess update             # update to latest version"
 echo "  assess -f                 # functional only"
 echo "  assess -a -s file.jsonl   # AI collaboration only"
-echo "  cat ~/.onsite-interview/problem.md  # view the problem"
 echo ""
 echo "To uninstall: rm -rf $INSTALL_DIR && rm -f $BIN_DIR/assess"

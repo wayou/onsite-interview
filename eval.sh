@@ -10,7 +10,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.3.0"
+VERSION="0.4.0"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
@@ -57,9 +57,17 @@ case "${1:-}" in
     exit 0
     ;;
   update)
-    echo "Updating onsite-interview toolkit..."
-    curl -fsSL https://raw.githubusercontent.com/wayou/onsite-interview/master/install.sh | bash
-    echo "Update complete."
+    OLD_VERSION="$VERSION"
+    echo "Checking for updates (current: v${OLD_VERSION})..."
+    # Run installer, capture output but suppress it
+    INSTALL_OUTPUT=$(curl -fsSL https://raw.githubusercontent.com/wayou/onsite-interview/master/install.sh | bash 2>&1)
+    # Re-read the new version from the freshly downloaded eval.sh
+    NEW_VERSION=$(grep -m1 '^VERSION=' "$SCRIPT_DIR/eval.sh" | cut -d'"' -f2)
+    if [[ "$OLD_VERSION" == "$NEW_VERSION" ]]; then
+      echo "Already up to date (v${OLD_VERSION})."
+    else
+      echo "Updated from v${OLD_VERSION} to v${NEW_VERSION}."
+    fi
     exit 0
     ;;
   cleanup)
