@@ -10,7 +10,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.7.1"
+VERSION="0.7.2"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {

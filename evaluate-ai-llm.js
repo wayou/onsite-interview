@@ -329,6 +329,11 @@ async function main() {
   // Stage 2: Build prompt
   const prompt = RUBRIC_PROMPT + condensed + '\n</session>\n\nScore each criterion and provide your evaluation. Format the output nicely with scores per criterion, phase subtotals, a final total score out of 100, a letter grade (A/B/C/D/F), a summary, strengths, and areas for improvement.';
 
+  // Log the full prompt to file for debugging
+  const logFile = sessionFile.replace(/\.jsonl$/, '-llm-prompt.log');
+  fs.writeFileSync(logFile, prompt, 'utf8');
+  console.log(`Full prompt logged to: ${logFile}`);
+
   // Stage 3: Call LLM and display result directly
   console.log(`${BOLD}Calling Claude (${model}) for evaluation...${NC}`);
   console.log('');
