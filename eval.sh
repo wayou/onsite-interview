@@ -10,6 +10,8 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
+VERSION="0.1.0"
+
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
@@ -23,6 +25,7 @@ Options:
   -w, --workdir DIR    Working directory for session discovery (default: CWD)
   -f, --functional     Run only functional evaluation
   -a, --ai-only        Run only AI collaboration evaluation
+  -v, --version        Show version
   -h, --help           Show this help
 
 Examples:
@@ -49,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     -w|--workdir)   SESSION_ARG="$2"; shift 2 ;;
     -f|--functional) RUN_FUNCTIONAL=true; RUN_AI=false; shift ;;
     -a|--ai-only)   RUN_AI=true; RUN_FUNCTIONAL=false; shift ;;
+    -v|--version)   echo "assess $VERSION"; exit 0 ;;
     -h|--help)      usage ;;
     *)              echo "Unknown option: $1" >&2; usage ;;
   esac
