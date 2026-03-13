@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
     *)       ARGS+=("$1"); shift ;;
   esac
 done
-set -- "${ARGS[@]}"
+set -- ${ARGS[@]+"${ARGS[@]}"}
 
 # ── Session Discovery (reused from evaluate-ai.sh) ──────────────────
 SESSION_FILE=""
