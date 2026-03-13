@@ -21,6 +21,7 @@ Commands:
   setup                Copy problem.md into the current directory to start an interview
   cleanup              Remove all files in the current directory except problem.md
   update               Re-run the installer to update all toolkit files
+  update --force       Force re-download even if already on latest version
   (default)            Run evaluations (functional and/or AI collaboration)
 
 Options (for evaluation):
@@ -38,6 +39,7 @@ Examples:
   $0 setup                                   # copy problem.md to CWD
   $0 cleanup                                 # clean CWD, keep problem.md
   $0 update                                  # update toolkit to latest version
+  $0 update --force                          # force re-download all files
   $0                                         # both evals, defaults
   $0 -u http://localhost:3000                # custom URL, both evals
   $0 -s /path/to/session.jsonl              # both evals, explicit session
@@ -61,14 +63,18 @@ case "${1:-}" in
     exit 0
     ;;
   update)
+    FORCE_UPDATE=false
+    [[ "${2:-}" == "--force" ]] && FORCE_UPDATE=true
     OLD_VERSION="$VERSION"
     echo "Checking for updates (current: v${OLD_VERSION})..."
     # Run installer, capture output but suppress it
     INSTALL_OUTPUT=$(curl -fsSL https://raw.githubusercontent.com/wayou/onsite-interview/master/install.sh | bash 2>&1)
     # Re-read the new version from the freshly downloaded eval.sh
     NEW_VERSION=$(grep -m1 '^VERSION=' "$SCRIPT_DIR/eval.sh" | cut -d'"' -f2)
-    if [[ "$OLD_VERSION" == "$NEW_VERSION" ]]; then
+    if [[ "$OLD_VERSION" == "$NEW_VERSION" ]] && [[ "$FORCE_UPDATE" == "false" ]]; then
       echo "Already up to date (v${OLD_VERSION})."
+    elif [[ "$OLD_VERSION" == "$NEW_VERSION" ]]; then
+      echo "Force re-downloaded all files (v${OLD_VERSION})."
     else
       echo "Updated from v${OLD_VERSION} to v${NEW_VERSION}."
     fi
