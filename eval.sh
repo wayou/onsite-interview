@@ -10,7 +10,7 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
-VERSION="0.6.2"
+VERSION="0.7.0"
 
 # ── Usage ────────────────────────────────────────────────────────────
 usage() {
@@ -141,7 +141,7 @@ fi
 
 # ── Run AI collaboration evaluation ─────────────────────────────────
 if [[ "$RUN_AI" == "true" ]]; then
-  AI_EVAL_SCRIPT="evaluate-ai-llm.sh"
+  AI_EVAL_SCRIPT="evaluate-ai-llm.js"
   AI_EVAL_LABEL="AI COLLABORATION (LLM)"
 
   echo ""
